@@ -34,11 +34,31 @@ controlOctave(currNote, currOctave, prevNote, prevOctave)
 	}
 }
 
+controlBaseNoteLength(currNoteLength, prevNoteLength)
+{
+	expectedNoteLength := prevNoteLength
+	while (expectedNoteLength < currNoteLength) ; The greater the number, the shorter the note length
+	{
+		Send, [
+		expectedNoteLength *= 2
+	}
+	while (expectedNoteLength > currNoteLength)
+	{
+		Send, ]
+		expectedNoteLength := expectedNoteLength // 2
+	}
+}
+
+
+;; TODO: NEED TO INCOPORATE TIME SIGNATURE TO UNDERSTAND NOTEFLIGHT'S AUTO-COMPLETE NOTE LENGTH FUNCTION - WOULD HAVE TO COUNT THE BEATS IN A BAR --> CAN IMPLEMENT BASIC VERSION FOR ONLY BASE 4 --> 4/4, 3/4, 2/4, etc.
+
+
 ;; "Main function"
 ^j::
 ;; These defaults are based on Noteflight defaults
 previousNote := "g"
 previousOctave := 4
+previousNoteLength := 4
 previousDotted := 0
 
 Loop, Read, SMAW_note_test_v1.csv
@@ -51,16 +71,38 @@ Loop, Read, SMAW_note_test_v1.csv
 		;; A_Index is a variable containing the field number
 		Switch A_Index
 		{
-			Case 1:
+			Case 1: ; Letter pitch
 				currentNote := A_LoopField
 				Send, %currentNote%
-			Case 2:
+			Case 2: ; Octave
 				currentOctave := A_LoopField
 				controlOctave(currentNote, currentOctave, previousNote, previousOctave)
+			Case 3: ; Accidental
+				Switch A_LoopField
+				{
+					Case -2:
+						Send, _
+					Case -1:
+						Send, -
+					Case 0:
+						Send, =
+					Case 1:
+						Send, {+}
+					Case 2:
+						Send, *
+				}
+			Case 4: ; Base note length
+				currentNoteLength := A_LoopField
+				controlBaseNoteLength(currentNoteLength, previousNoteLength)
+			Case 5: ; Dotted note length
+				currentDotted := A_LoopField
+				if (currentDotted != previousDotted)
+					Send, .
 		}
 	}
 	previousNote := currentNote
 	previousOctave := currentOctave
-	;; previousDotted := currentDotted
+	previousNoteLength := currentNoteLength
+	previousDotted := currentDotted
 }
 return
