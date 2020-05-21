@@ -3,12 +3,13 @@
 SendMode Input  ; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 
+currentBarBeats := 0 ; Global variable
+
 controlOctave(currNote, currOctave, prevNote, prevOctave)
 {
-	;; Because the scientific pitch notation changes octave at every C and not A, I will have to manually 'move' A and B to be after G
+	;; Because the scientific pitch notation changes octave at every C and not A, I will manually 'move' A and B to be after G
 	currNoteVal := Asc(currNote)
 	prevNoteVal := Asc(prevNote)
-	;; see drawing square brackets
 	if (currNote == "a") || (currNote == "b")
 		currNoteVal += 7
 	if (prevNote == "a") || (prevNote == "b")
@@ -34,6 +35,23 @@ controlOctave(currNote, currOctave, prevNote, prevOctave)
 	}
 }
 
+controlAccidental(accidental)
+{
+	Switch accidental
+	{
+		Case -2:
+			Send, _
+		Case -1:
+			Send, -
+		Case 0:
+			Send, =
+		Case 1:
+			Send, {+}
+		Case 2:
+			Send, *
+	}
+}
+
 controlBaseNoteLength(currNoteLength, prevNoteLength)
 {
 	expectedNoteLength := prevNoteLength
@@ -49,9 +67,32 @@ controlBaseNoteLength(currNoteLength, prevNoteLength)
 	}
 }
 
-
-;; TODO: NEED TO INCOPORATE TIME SIGNATURE TO UNDERSTAND NOTEFLIGHT'S AUTO-COMPLETE NOTE LENGTH FUNCTION - WOULD HAVE TO COUNT THE BEATS IN A BAR --> CAN IMPLEMENT BASIC VERSION FOR ONLY BASE 4 --> 4/4, 3/4, 2/4, etc.
-
+;; enterNote is going to press the keys to enter the note into Noteflight AND return a bool value for whether or not the note entered was the last note in the bar
+enterNote(currentNote, currentOctave, accidental, currentNoteLength, currentDotted, previousNote, previousOctave, previousNoteLength, previousDotted, timeSigTop, timeSigBottom)
+{
+	;; Determine if the current note is the last note in the bar
+	newBeatAddition := 1 / currentNoteLength
+	if (currentDotted == 1)
+		newBeatAddition *= 1.5
+	global currentBarBeats ; reference the global variable
+	currentBarBeats += newBeatAddition
+	isLastNote := (currentBarBeats == (timeSigTop / timeSigBottom)) ; The current note was the last note in the bar
+	;; Letter pitch
+	Send % currentNote
+	;; Octave
+	controlOctave(currentNote, currentOctave, previousNote, previousOctave)
+	;; Accidental
+	controlAccidental(accidental)
+	;; Base Note Length & Dotted Note Length
+	if !(isLastNote && currentNoteLength > previousNoteLength && currentDotted != 1) ; No need to control note length if it's the last note
+	{
+		controlBaseNoteLength(currentNoteLength, previousNoteLength)
+		if (currentDotted != previousDotted)
+			Send, .
+	}
+	;; Diagnostic: MsgBox % "isLastNote: " . isLastNote . " currentNoteLength: " . currentNoteLength . " previousNoteLength: " . previousNoteLength . " currentDotted: " . currentDotted " because currentBarBeats: " . currentBarBeats . " and (timeSigTop / timeSigBottom): " . (timeSigTop / timeSigBottom)
+	return isLastNote
+}
 
 ;; "Main function"
 ^j::
@@ -61,10 +102,19 @@ previousOctave := 4
 previousNoteLength := 4
 previousDotted := 0
 
+timeSigTop := 4
+timeSigBottom := 4
+global currentBarBeats
+currentBarBeats := 0
+isLastNote := false
+
+;;TODO: Add a isNote variable to detect time signature change OR note entry ?
+
 Loop, Read, SMAW_note_test_v1.csv
 {
 	;; A_LoopReadLine is a variable containing contents of current line
 	;; A_Index is a variable containing the line number
+	timeSigChange := false
 	Loop, Parse, A_LoopReadLine, CSV
 	{
 		;; A_LoopField is a variable containing the contents of the field
@@ -72,37 +122,35 @@ Loop, Read, SMAW_note_test_v1.csv
 		Switch A_Index
 		{
 			Case 1: ; Letter pitch
-				currentNote := A_LoopField
-				Send, %currentNote%
-			Case 2: ; Octave
-				currentOctave := A_LoopField
-				controlOctave(currentNote, currentOctave, previousNote, previousOctave)
-			Case 3: ; Accidental
-				Switch A_LoopField
+				if (Asc(A_LoopField) > 48) && (Asc(A_LoopField) <= 57) ; If the input is a number, then it will indicate a time signature change
 				{
-					Case -2:
-						Send, _
-					Case -1:
-						Send, -
-					Case 0:
-						Send, =
-					Case 1:
-						Send, {+}
-					Case 2:
-						Send, *
+					timeSigChange := true
+					timeSigTop := A_LoopField
 				}
+				else
+					currentNote := A_LoopField
+			Case 2: ; Octave
+				if (timeSigChange)
+					timeSigBottom := A_LoopField
+				else
+					currentOctave := A_LoopField
+			Case 3: ; Accidental
+				accidental := A_LoopField
 			Case 4: ; Base note length
 				currentNoteLength := A_LoopField
-				controlBaseNoteLength(currentNoteLength, previousNoteLength)
 			Case 5: ; Dotted note length
 				currentDotted := A_LoopField
-				if (currentDotted != previousDotted)
-					Send, .
 		}
 	}
-	previousNote := currentNote
-	previousOctave := currentOctave
-	previousNoteLength := currentNoteLength
-	previousDotted := currentDotted
+	if (!timeSigChange)
+	{
+		isLastNote := enterNote(currentNote, currentOctave, accidental, currentNoteLength, currentDotted, previousNote, previousOctave, previousNoteLength, previousDotted, timeSigTop, timeSigBottom)
+		if (isLastNote)
+			currentBarBeats := 0
+		previousNote := currentNote
+		previousOctave := currentOctave
+		previousNoteLength := currentNoteLength
+		previousDotted := currentDotted
+	}
 }
 return
