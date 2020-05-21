@@ -77,6 +77,19 @@ enterNote(currentNote, currentOctave, accidental, currentNoteLength, currentDott
 	global currentBarBeats ; reference the global variable
 	currentBarBeats += newBeatAddition
 	isLastNote := (currentBarBeats == (timeSigTop / timeSigBottom)) ; The current note was the last note in the bar
+	;; Determine Noteflight's expected note length for the note
+	if (!isLastNote)
+	{
+		previousNoteLengthValue := 1 / previousNoteLength
+		if (previousDotted == 1)
+			previousNoteLengthValue *= 1.5
+		if (currentBarBeats - newBeatAddition + previousNoteLengthValue > (timeSigTop / timeSigBottom))
+		{
+			previousNoteLength := timeSigBottom
+			previousDotted := 0
+			;; MsgBox % "currentBarBeats: " . currentBarBeats . " newBeatAddition: " . newBeatAddition . " previousNoteLengthValue: " . previousNoteLengthValue
+		}
+	}
 	;; Letter pitch
 	Send % currentNote
 	;; Octave
@@ -110,7 +123,7 @@ isLastNote := false
 
 ;;TODO: Add a isNote variable to detect time signature change OR note entry ?
 
-Loop, Read, SMAW_note_test_v1.csv
+Loop, Read, SMAW_FINAL_note_sample_v1.csv
 {
 	;; A_LoopReadLine is a variable containing contents of current line
 	;; A_Index is a variable containing the line number
@@ -151,6 +164,13 @@ Loop, Read, SMAW_note_test_v1.csv
 		previousOctave := currentOctave
 		previousNoteLength := currentNoteLength
 		previousDotted := currentDotted
+	}
+	else
+	{
+		MsgBox % "Time signature change to: " . timeSigTop . "/" . timeSigBottom . " has been detected. Please manually change the time signature in Noteflight now."
+		; Whenever the time signature is changed in Noteflight, the default note duration reverted to exactly one beat
+		previousNoteLength := timeSigBottom
+		previousDotted := 0
 	}
 }
 return
