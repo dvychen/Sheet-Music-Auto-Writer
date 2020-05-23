@@ -121,9 +121,9 @@ global currentBarBeats
 currentBarBeats := 0
 isLastNote := false
 
-;;TODO: Add a isNote variable to detect time signature change OR note entry ?
+InputBox, fileToRead, , Enter the comma-separated value file to read with Sheet Music Auto Reader (e.g. SMAW_FINAL_note_sample_v1.csv).
 
-Loop, Read, SMAW_FINAL_note_sample_v1.csv
+Loop, Read, %fileToRead%
 {
 	;; A_LoopReadLine is a variable containing contents of current line
 	;; A_Index is a variable containing the line number
@@ -168,7 +168,7 @@ Loop, Read, SMAW_FINAL_note_sample_v1.csv
 	else
 	{
 		MsgBox % "Time signature change to: " . timeSigTop . "/" . timeSigBottom . " has been detected. Please manually change the time signature in Noteflight now."
-		; Whenever the time signature is changed in Noteflight, the default note duration reverted to exactly one beat
+		;; Whenever the time signature is changed in Noteflight, the default note duration reverted to exactly one beat
 		previousNoteLength := timeSigBottom
 		previousDotted := 0
 	}
