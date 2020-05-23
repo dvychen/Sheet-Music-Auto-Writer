@@ -121,7 +121,7 @@ global currentBarBeats
 currentBarBeats := 0
 isLastNote := false
 
-InputBox, fileToRead, , Enter the comma-separated value file to read with Sheet Music Auto Reader (e.g. SMAW_FINAL_note_sample_v1.csv).
+InputBox, fileToRead, , Enter the comma-separated value file to read with Sheet Music Auto Writer (e.g. SMAW_FINAL_note_sample_v1.csv).
 
 Loop, Read, %fileToRead%
 {
